@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mesafe Takip</title>
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial, sans-serif;
+}
+
+body{
+    background:#000;
+    color:white;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    min-height:100vh;
+}
+
+.container{
+    width:100%;
+    max-width:430px;
+    padding:25px;
+    text-align:center;
+}
+
+h1{
+    font-size:64px;
+    margin-bottom:70px;
+    font-weight:bold;
+}
+
+.km{
+    color:#00ff44;
+    font-size:90px;
+    font-weight:bold;
+    margin-bottom:60px;
+}
+
+.info{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    margin-bottom:50px;
+}
+
+.box{
+    flex:1;
+    background:#161616;
+    padding:25px 10px;
+    border-radius:25px;
+}
+
+.label{
+    color:#bdbdbd;
+    font-size:18px;
+    margin-bottom:12px;
+}
+
+.value{
+    font-size:28px;
+    font-weight:bold;
+}
+
+.buttons{
+    display:flex;
+    gap:15px;
+    margin-bottom:20px;
+}
+
+button{
+    flex:1;
+    padding:28px;
+    border:none;
+    border-radius:35px;
+    font-size:26px;
+    font-weight:bold;
+    color:white;
+}
+
+.baslat{
+    background:#00dd22;
+}
+
+.bitir{
+    background:#e30000;
+}
+
+.sifirla{
+    width:100%;
+    background:#444;
+    margin-top:10px;
+}
+
+.rapor{
+    margin-top:35px;
+    background:#101010;
+    border-radius:25px;
+    padding:20px;
+    text-align:left;
+}
+
+.rapor h2{
+    margin-bottom:15px;
+}
+
+.kayit{
+    padding:12px 0;
+    border-bottom:1px solid #222;
+    font-size:18px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>MESAFE TAKIP</h1>
+
+<div class="km" id="km">0.00 KM</div>
+
+<div class="info">
+
+    <div class="box">
+        <div class="label">SÜRE</div>
+        <div class="value" id="sure">00:00</div>
+    </div>
+
+    <div class="box">
+        <div class="label">HIZ</div>
+        <div class="value" id="hiz">0</div>
+    </div>
+
+    <div class="box">
+        <div class="label">DURUM</div>
+        <div class="value" id="durum">HAZIR</div>
+    </div>
+
+</div>
+
+<div class="buttons">
+    <button class="baslat" onclick="baslat()">BAŞLAT</button>
+    <button class="bitir" onclick="bitir()">BİTİR</button>
+</div>
+
+<button class="sifirla" onclick="sifirla()">SIFIRLA</button>
+
+<div class="rapor">
+    <h2>RAPORLAR</h2>
+    <div id="raporlar"></div>
+</div>
+
+</div>
+
+<script>
+
+let takip = false;
+let watchId;
+
+let toplamMesafe = 0;
+let oncekiKonum = null;
+
+let baslangicZamani = 0;
+let gecenSure = 0;
+
+let timer;
+
+function baslat(){
+
+    if(takip) return;
+
+    takip = true;
+
+    document.getElementById("durum").innerText = "AKTIF";
+
+    baslangicZamani = Date.now() - gecenSure;
+
+    timer = setInterval(() => {
+
+        gecenSure = Date.now() - baslangicZamani;
+
+        let saniye = Math.floor(gecenSure / 1000);
+        let dakika = Math.floor(saniye / 60);
+
+        saniye = saniye % 60;
+
+        document.getElementById("sure").innerText =
+        `${dakika.toString().padStart(2,'0')}:${saniye.toString().padStart(2,'0')}`;
+
+    },1000);
+
+    if(navigator.geolocation){
+
+        watchId = navigator.geolocation.watchPosition(
+            konumGuncelle,
+            gpsHata,
+            {
+                enableHighAccuracy:true,
+                maximumAge:0,
+                timeout:10000
+            }
+        );
+
+    }else{
+        alert("GPS desteklenmiyor");
+    }
+
+}
+
+function bitir(){
+
+    if(!takip) return;
+
+    takip = false;
+
+    clearInterval(timer);
+
+    navigator.geolocation.clearWatch(watchId);
+
+    document.getElementById("durum").innerText = "BITTI";
+
+    let dakika = Math.floor((gecenSure/1000)/60);
+    let saniye = Math.floor((gecenSure/1000)%60);
+
+    let rapor = `
+    <div class="kayit">
+    🕒 ${dakika} dk ${saniye} sn <br>
+    📍 ${toplamMesafe.toFixed(2)} KM
+    </div>
+    `;
+
+    document.getElementById("raporlar").innerHTML =
+    rapor + document.getElementById("raporlar").innerHTML;
+
+}
+
+function sifirla(){
+
+    toplamMesafe = 0;
+    oncekiKonum = null;
+    gecenSure = 0;
+
+    document.getElementById("km").innerText = "0.00 KM";
+    document.getElementById("sure").innerText = "00:00";
+    document.getElementById("hiz").innerText = "0";
+    document.getElementById("durum").innerText = "HAZIR";
+
+}
+
+function konumGuncelle(pos){
+
+    let lat = pos.coords.latitude;
+    let lon = pos.coords.longitude;
+
+    let hiz = pos.coords.speed || 0;
+
+    document.getElementById("hiz").innerText =
+    (hiz * 3.6).toFixed(1);
+
+    if(oncekiKonum){
+
+        let uzaklik = mesafeHesapla(
+            oncekiKonum.lat,
+            oncekiKonum.lon,
+            lat,
+            lon
+        );
+
+        // 10 METREDEN AZSA SAYMA
+        if(uzaklik < 0.01) return;
+
+        toplamMesafe += uzaklik;
+
+        document.getElementById("km").innerText =
+        toplamMesafe.toFixed(2) + " KM";
+
+    }
+
+    oncekiKonum = {
+        lat,
+        lon
+    };
+
+}
+
+function gpsHata(e){
+    alert("GPS HATASI");
+}
+
+function mesafeHesapla(lat1, lon1, lat2, lon2){
+
+    let R = 6371;
+
+    let dLat = (lat2-lat1) * Math.PI/180;
+    let dLon = (lon2-lon1) * Math.PI/180;
+
+    let a =
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1*Math.PI/180) *
+        Math.cos(lat2*Math.PI/180) *
+        Math.sin(dLon/2) *
+        Math.sin(dLon/2);
+
+    let c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+    return R * c;
+}
+
+</script>
+
+</body>
+</html>
