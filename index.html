@@ -6,11 +6,12 @@
 <title>Mesafe Takip</title>
 
 <style>
+
 *{
     margin:0;
     padding:0;
     box-sizing:border-box;
-    font-family:Arial, sans-serif;
+    font-family:Arial,sans-serif;
 }
 
 body{
@@ -114,6 +115,7 @@ button{
     border-bottom:1px solid #222;
     font-size:18px;
 }
+
 </style>
 </head>
 
@@ -263,6 +265,11 @@ function konumGuncelle(pos){
     document.getElementById("hiz").innerText =
     (hiz * 3.6).toFixed(1);
 
+    // GPS doğruluğu kötüyse alma
+    if(pos.coords.accuracy > 25){
+        return;
+    }
+
     if(oncekiKonum){
 
         let uzaklik = mesafeHesapla(
@@ -272,8 +279,10 @@ function konumGuncelle(pos){
             lon
         );
 
-        // 10 METREDEN AZSA SAYMA
-        if(uzaklik < 0.01) return;
+        // 30 METREDEN AZSA SAYMA
+        if(uzaklik < 0.03){
+            return;
+        }
 
         toplamMesafe += uzaklik;
 
